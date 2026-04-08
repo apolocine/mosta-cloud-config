@@ -1,0 +1,65 @@
+{
+  "defaultPlan": "free",
+  "plans": [
+    {
+      "name": "Free",
+      "slug": "free",
+      "price": 0,
+      "currency": "usd",
+      "interval": "month",
+      "limits": {
+        "maxProjects": 1,
+        "maxApiKeys": 1,
+        "requestsPerDay": 1000,
+        "maxPoolSize": 5,
+        "dialects": ["sqlite", "postgres"],
+        "transports": ["rest", "mcp"],
+        "replication": false
+      },
+      "features": ["1 project", "1,000 req/day", "REST + MCP", "Community support"],
+      "active": true,
+      "sortOrder": 0,
+      "retention": 7
+    },
+    {
+      "name": "Medium",
+      "slug": "medium",
+      "price": 2900,
+      "currency": "usd",
+      "interval": "month",
+      "limits": {
+        "maxProjects": 5,
+        "maxApiKeys": 5,
+        "requestsPerDay": 50000,
+        "maxPoolSize": 50,
+        "dialects": ["sqlite", "postgres", "mysql", "mongodb", "mariadb"],
+        "transports": ["rest", "mcp", "graphql", "trpc", "odata"],
+        "replication": false
+      },
+      "features": ["5 projects", "50,000 req/day", "5 transports", "Email support"],
+      "active": true,
+      "sortOrder": 1,
+      "retention": 30
+    },
+    {
+      "name": "Premium",
+      "slug": "premium",
+      "price": 9900,
+      "currency": "usd",
+      "interval": "month",
+      "limits": {
+        "maxProjects": -1,
+        "maxApiKeys": -1,
+        "requestsPerDay": -1,
+        "maxPoolSize": 200,
+        "dialects": "*",
+        "transports": "*",
+        "replication": true
+      },
+      "features": ["Unlimited projects", "Unlimited requests", "13 dialects", "11 transports", "CQRS/CDC", "Priority support"],
+      "active": true,
+      "sortOrder": 2,
+      "retention": 90
+    }
+  ]
+}
