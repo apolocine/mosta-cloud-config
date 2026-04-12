@@ -1,6 +1,6 @@
 {
   "name": "@mostajs/cloud-config",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Single source of truth for OctoNet Cloud configuration — plans, permissions, audit, settings, retention",
   "type": "module",
   "main": "dist/index.js",
