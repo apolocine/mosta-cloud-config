@@ -1,0 +1,86 @@
+# @mostajs/cloud-config — fiche LLM
+> Source unique de vérité de la configuration OctoNet Cloud — plans, permissions, audit, settings, rétention.
+
+- Version: 0.1.2 · Licence: AGPL-3.0-or-later · Auteur: Dr Hamid MADANI <drmdh@msn.com>
+- Chemin: mostajs/mosta-cloud-config · Statut audit: complet (dist/)
+
+## RÔLE
+Centralise toute la configuration de l'offre « OctoNet Cloud » : définition des plans
+tarifaires (free/medium/premium et leurs limites), permissions et rôles RBAC du cloud,
+modules d'audit, settings et leurs groupes, politiques de rétention. Fournit les seeds
+(seeds/plans.json) consommés au bootstrap et des fonctions pour injecter ces données dans
+RBAC, settings et la base. Au runtime, les plans vivent en DB ; les fonctions de seed ne
+servent qu'au bootstrap initial.
+
+## INSTALLATION
+npm i @mostajs/cloud-config
+
+## EXPORTS
+- Plans (point d'entrée racine): PLANS, DEFAULT_PLAN, getPlans, getDefaultPlanSlug, loadSeedPlans, loadPlansFromFile, getSeedRetention, getPlanRetention
+- RBAC: PERMISSIONS, CATEGORIES, ROLES
+- Audit: AUDIT_MODULES, getAuditModuleNames, getAuditActions, getAllAuditActions
+- Settings: SETTINGS, SETTING_GROUPS, getSettingsDefaults, getSettingsValidators, getSettingsByGroup
+- Rétention: RETENTION, getRetentionDays, getRetentionPolicy
+- Divers: moduleInfo
+- Types: PlanSlug, PlanLimits, PlanDefinition, CloudPermissionDef, CloudCategoryDef, CloudRoleDef, CloudAuditModuleDef, CloudSettingDef, CloudSettingGroupDef, RetentionPolicy, CloudConfig, PlanSeedFile
+
+## EXPORTS PAR SOUS-CHEMIN
+- @mostajs/cloud-config (racine) : tout ce qui est sûr côté config/seed (sans accès DB).
+- @mostajs/cloud-config/server : ré-exporte la racine PLUS les fonctions à effet de bord / DB :
+  getCloudConfig, bootstrapRBAC, bootstrapSettings, bootstrapPlans, bootstrapRetention,
+  getAuditModulesForUI, isValidPlanSlug, seedPlans, findPlanBySlug, findActivePlans,
+  getPlanSlugs, isPlanSlug, cloudConfigRegistration.
+
+## API — SIGNATURES
+- getCloudConfig(): CloudConfig
+- loadSeedPlans(filePath?): PlanSeedFile  // lecture seeds/plans.json — bootstrap uniquement
+- getPlans(seedPath?): PlanDefinition[] ; getDefaultPlanSlug(seedPath?): PlanSlug
+- getPlanRetention(slug, seedPath?): number ; getSeedRetention(planSlug, seedPath?): number
+- seedPlans(planRepo, seedPath?): Promise<{ created: number; updated: number }>  // upsert par slug, idempotent
+- findPlanBySlug(planRepo, slug): Promise<PlanDefinition | null>
+- findActivePlans(planRepo): Promise<PlanDefinition[]>  // SEUL moyen de lire les plans au runtime
+- getPlanSlugs(planRepo): Promise<string[]> ; isPlanSlug(planRepo, slug): Promise<boolean>
+- bootstrapRBAC(seedRBAC): Promise<{ categoryCount; permissionCount; roleCount }>
+- bootstrapSettings(createSettingsModule): any  // injecte SETTINGS dans @mostajs/settings
+- bootstrapPlans(planRepo, seedPath?): Promise<{ created; updated }>
+- bootstrapRetention(repo: { deleteOlderThan }): (planSlug) => Promise<{ deleted; retentionDays }>
+- getRetentionDays(planSlug, policy?): number ; getRetentionPolicy(seedPath?): RetentionPolicy
+- isValidPlanSlug(slug): boolean  // sync, validation contre le seed
+
+## TYPES CLÉS
+- PlanSlug = 'free' | 'medium' | 'premium'
+- PlanLimits { maxProjects; maxApiKeys; requestsPerDay; maxPoolSize; dialects: string[]|'*'; transports: string[]|'*'; replication: boolean }
+- PlanDefinition { name; slug: PlanSlug; price; currency; interval: 'month'|'year'; limits: PlanLimits; features: string[]; active; sortOrder }
+- CloudPermissionDef { code; name; description; category }
+- CloudRoleDef { name; description; system; permissions: string[] }
+- CloudSettingDef { key; type: 'string'|'number'|'boolean'; default; group; validator?; sensitive? }
+- RetentionPolicy = { [planSlug: string]: number }
+- CloudConfig { plans; defaultPlan; permissions; categories; roles; auditModules; settings; settingGroups; retention }
+- PlanSeedFile { defaultPlan: string; plans: (PlanDefinition & { retention?: number })[] }
+
+## PATTERN
+```ts
+// bootstrap (une fois)
+import { bootstrapPlans, bootstrapRBAC } from '@mostajs/cloud-config/server';
+await bootstrapPlans(planRepo);            // seed seeds/plans.json -> DB (idempotent)
+await bootstrapRBAC(seedRBAC);             // injecte permissions/rôles cloud
+
+// runtime
+import { findActivePlans, findPlanBySlug } from '@mostajs/cloud-config/server';
+const plans = await findActivePlans(planRepo);
+```
+
+## DÉPEND DE
+- Peer optionnel: @mostajs/orm (^1.8.0) — requis pour les fonctions DB (seedPlans, findActivePlans…).
+- Reçoit par injection seedRBAC (de @mostajs/rbac) et createSettingsModule (de @mostajs/settings) — pas en dépendance directe.
+
+## PIÈGES
+- PLANS / DEFAULT_PLAN sont un SNAPSHOT du seed chargé au démarrage, conservés pour compat : au runtime, lire les plans en DB via findActivePlans / findPlanBySlug, jamais via PLANS.
+- isValidPlanSlug() valide contre le SEED (sync) ; pour valider contre la DB, utiliser isPlanSlug(planRepo, slug) (async).
+- La rétention (jours) est dans seeds/plans.json mais PAS dans le schéma Plan en DB : c'est une politique de déploiement — la lire via getSeedRetention / getRetentionDays.
+- Importer les fonctions à effet DB depuis /server, pas depuis la racine.
+
+## RÉFÉRENCES
+- README.md
+- seeds/plans.json (seed des plans + rétention)
+- test-scripts/test-unit.ts
